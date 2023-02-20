@@ -2320,9 +2320,9 @@ double update_prevalent_diagnosis(agent *ag)
 int check_azt_eligibility (agent *ag){
 
   // Reference: > 1
-  // if ((((*ag).medication_status & 15) >= 14 )){
-  //   return 1;
-  // }
+  if ((((*ag).medication_status & 15) >= 14 )){
+    return 1;
+  }
 
   // // No history
   // if (((*ag).local_time - (*ag).notmild_exac_history_time_first ) >= 1 ){
@@ -2330,9 +2330,9 @@ int check_azt_eligibility (agent *ag){
   // }
 
   // // // >= 1
-  if (((*ag).local_time - (*ag).notmild_exac_history_time_first ) < 1  && (*ag).notmild_exac_history_severity_first > 1){
-    return 1;
-  }
+  // if (((*ag).local_time - (*ag).notmild_exac_history_time_first ) < 1  && (*ag).notmild_exac_history_severity_first > 1){
+  //   return 1;
+  // }
 
   // >=2 | > 1
   // if ((((*ag).local_time - (*ag).notmild_exac_history_time_first ) < 1  && (*ag).notmild_exac_history_severity_first > 2)
