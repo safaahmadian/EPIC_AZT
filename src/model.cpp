@@ -614,6 +614,9 @@ struct input
     double cost_GIs;
     double cost_cvd;
     double cost_GP_visit;
+
+    double cost_indirect[4];
+
   } cost;
 
   struct
@@ -831,7 +834,10 @@ List Cget_inputs()
       Rcpp::Named("cost_hearing_loss_management")=input.cost.cost_hearing_loss_management,
       Rcpp::Named("cost_GIs")=input.cost.cost_GIs,
       Rcpp::Named("cost_cvd")=input.cost.cost_cvd,
-      Rcpp::Named("cost_GP_visit")=input.cost.cost_GP_visit
+      Rcpp::Named("cost_GP_visit")=input.cost.cost_GP_visit,
+
+      Rcpp::Named("cost_indirect")=AS_VECTOR_DOUBLE(input.cost.cost_indirect)
+
     ),
     Rcpp::Named("utility")=Rcpp::List::create(
       Rcpp::Named("bg_util_by_stage")=AS_VECTOR_DOUBLE(input.utility.bg_util_by_stage),
@@ -990,6 +996,7 @@ int Cset_input_var(std::string name, NumericVector value)
   if(name=="cost$cost_cvd") {input.cost.cost_cvd=value[0]; return(0);};
   if(name=="cost$cost_GP_visit") {input.cost.cost_GP_visit=value[0]; return(0);};
 
+  if(name=="cost$cost_indirect") READ_R_VECTOR(value,input.cost.cost_indirect);
 
   if(name=="medication$medication_ln_hr_exac") READ_R_VECTOR(value,input.medication.medication_ln_hr_exac);
   if(name=="medication$medication_adherence") {input.medication.medication_adherence=value[0]; return(0);};
@@ -1537,6 +1544,8 @@ struct output
   int azt_n_deaths;         //End variable by nature.
   int azt_n_COPD;
   double azt_avg_age;
+  double azt_avg_age_sd;
+
   double azt_avg_death_age;
 
   int azt_total_exac[4];    //0:mild, 1:moderae, 2:severe; 3=very severe    END because agent records
@@ -1590,6 +1599,8 @@ void reset_output()
   output.azt_n_deaths=0;         //End variable by nature.
   output.azt_n_COPD=0;
   output.azt_avg_age=0;
+  output.azt_avg_age_sd=0;
+
   output.azt_avg_death_age=0;
 
   output.azt_total_exac[0]=0;output.azt_total_exac[1]=0;output.azt_total_exac[2]=0;output.azt_total_exac[3]=0;   //0:mild, 1:moderae, 2:severe; 3=very severe    END because agent records
@@ -1640,10 +1651,12 @@ List Cget_output()
 //Safa #ifdef OUTPUT_AZT_CEA
     Rcpp::Named("azt_n_agents")=output.azt_n_agents,
     Rcpp::Named("azt_cumul_time")=output.azt_cumul_time,
-    Rcpp::Named("azt_n_deaths")=output.azt_n_deaths,
+    // Rcpp::Named("azt_n_deaths")=output.azt_n_deaths,
+    Rcpp::Named("azt_avg_age")=output.azt_avg_age,
+    Rcpp::Named("azt_avg_age_sd")=output.azt_avg_age_sd,
 
     Rcpp::Named("azt_total_exac")=AS_VECTOR_INT(output.azt_total_exac),
-    Rcpp::Named("azt_total_gold")=AS_VECTOR_INT(output.azt_total_gold),
+    // Rcpp::Named("azt_total_gold")=AS_VECTOR_INT(output.azt_total_gold),
     Rcpp::Named("azt_exp_total_exacs")=output.azt_exp_total_exacs,
 
     Rcpp::Named("azt_total_cost")=output.azt_total_cost,
@@ -2320,19 +2333,19 @@ double update_prevalent_diagnosis(agent *ag)
 int check_azt_eligibility (agent *ag){
 
   // Reference: > 1
-  if ((((*ag).medication_status & 15) >= 14 )){
-    return 1;
-  }
+  // if ((((*ag).medication_status & 15) >= 14 )){
+  //   return 1;
+  // }
 
   // // No history
   // if (((*ag).local_time - (*ag).notmild_exac_history_time_first ) >= 1 ){
   //   return 1;
   // }
 
-  // // // >= 1
-  // if (((*ag).local_time - (*ag).notmild_exac_history_time_first ) < 1  && (*ag).notmild_exac_history_severity_first > 1){
-  //   return 1;
-  // }
+  // // >= 1
+  if (((*ag).local_time - (*ag).notmild_exac_history_time_first ) < 1  && (*ag).notmild_exac_history_severity_first > 1){
+    return 1;
+  }
 
   // >=2 | > 1
   // if ((((*ag).local_time - (*ag).notmild_exac_history_time_first ) < 1  && (*ag).notmild_exac_history_severity_first > 2)
@@ -2386,6 +2399,11 @@ double update_AZT_payoffs (agent *ag){
     if(on_azt){
       (*ag).cumul_cost+=input.cost.annual_AZT_costs/pow(1+input.global_parameters.discount_cost,(*ag).local_time+calendar_time);
     }
+
+    // // indirect costs due to unemployment and productivity loss
+    // if (((*ag).age_at_creation + (*ag).local_time) < 66){
+    //   (*ag).cumul_cost+=input.cost.cost_indirect[(*ag).gold-1]/pow(1+input.global_parameters.discount_cost,(*ag).local_time+calendar_time);
+    // }
 
   }
 
@@ -2975,6 +2993,11 @@ agent *event_end_process(agent *ag)
 
       (*ag).cumul_cost+=(*ag).gastro_status*input.cost.cost_GIs*past_period/pow(1+input.global_parameters.discount_cost,(*ag).local_time+calendar_time);
       (*ag).cumul_cost_gi+=(*ag).gastro_status*input.cost.cost_GIs*past_period/pow(1+input.global_parameters.discount_cost,(*ag).local_time+calendar_time);
+
+      // // indirect costs due to unemployment and productivity loss
+      // if (((*ag).age_at_creation + (*ag).local_time) < 66){
+      //   (*ag).cumul_cost+=input.cost.cost_indirect[(*ag).gold-1]*past_period/pow(1+input.global_parameters.discount_cost,(*ag).local_time+calendar_time);
+      // }
     }
     else{
 
@@ -3027,7 +3050,9 @@ agent *event_end_process(agent *ag)
 
     output.azt_n_deaths+=!(*ag).alive;
 
-    output.azt_avg_age += ((*ag).age_at_creation + (*ag).local_time_at_AZT);
+    output.azt_avg_age += ((*ag).age_at_creation);
+    output.azt_avg_age_sd += pow(((*ag).age_at_creation - 66), 2);
+
 
     if(!(*ag).alive){
       output.azt_avg_death_age += ((*ag).age_at_creation + (*ag).local_time);
@@ -4387,6 +4412,7 @@ int Cmodel(int max_n_agents)
     // {
     //   double tte=input.global_parameters.time_horizon-calendar_time-(*ag).local_time;;
     //
+
     while(
       (((calendar_time+(*ag).local_time)<input.global_parameters.time_horizon && !(*ag).azt_eligible)
          // for AZT_CEA we want to follow all agents for 20 years so calendar_time is not important

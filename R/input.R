@@ -552,8 +552,8 @@ get_input <- function(age0 = 40,
                                             ICS_LAMA_LABA=log((1-0.34)^input$medication$medication_adherence),
                                             ICS_LAMA_LABA_SABA=log((1-0.34)^input$medication$medication_adherence),
 
-                                            #Safa :
-                                            AZT=log((1-0.27)^input$medication$medication_adherence),
+                                            #Safa:
+                                            AZT=log((1-input$medication$AZT_effect)^input$medication$medication_adherence),
                                             SABA_AZT=log((1-input$medication$AZT_effect)^input$medication$medication_adherence),
                                             LABA_AZT=log((1-0.20-input$medication$AZT_effect)^input$medication$medication_adherence),
                                             SABA_LABA_AZT=log((1-0.20-input$medication$AZT_effect)^input$medication$medication_adherence),
@@ -765,6 +765,11 @@ get_input <- function(age0 = 40,
 
   input$cost$cost_GP_visit <- 84.45
   input_help$cost$cost_GP_visit <- "ON Physician Schedule of Benefits"
+
+  #Indirect costs
+  input$cost$cost_indirect <- c(0, 7978.45, 29500.79, 44523.62)
+  input_help$cost$cost_indirect <- "Costs of unemployment and productivity loss due to COPD by severity GOLD"
+
 
   # Safa : disutility of adverse events of AZT
   input_help$utility$hearing_dutil <- "disutility of hearing loss"
